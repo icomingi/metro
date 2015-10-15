@@ -1,17 +1,6 @@
-<<<<<<< HEAD:spark/pyspark_example.txt
-cd /s/jyang96
-cd spark-1.4.1-bin-hadoop2.6
-./bin/pyspark
-
-
-
-from pyspark import SparkContext, kj
-=======
 from pyspark import SparkContext, SparkConf
->>>>>>> f9c344017543d067be52156dc0ef4853f93000b5:spark/pyspark_example.py
 from pyspark.sql import SQLContext
 from pyspark.sql.types import *
-
 
 conf = SparkConf().setAppName("SODA").setMaster("local")
 sc = SparkContext(conf=conf)
