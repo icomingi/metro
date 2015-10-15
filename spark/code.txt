@@ -1,0 +1,58 @@
+library(plyr)
+
+
+
+Sys.setlocale(category="LC_ALL", locale = "chinese")
+Sys.getlocale(category="LC_ALL")
+setwd("W:\\GRMOR\\Marketing_Analytics\\Steven_Zhu\\mobility\\china mobility")
+dat=read.csv("SPTCC-20150401.csv",stringsAsFactors=FALSE,encoding="chinese",header=FALSE )
+names(dat) = c('countID', 'date', 'time', 'station', 'trasp', 'price', 'discount')
+
+
+
+dat$hour=as.numeric(h)
+
+dat_temp=dat[1:10000,]
+
+
+#Q1: Get total volume of come-into-station by station
+dat1=dat[dat$price==0 & dat$trasp=="??",]
+totalin_bystation=ddply(dat1,~station,summarise,count=sum(count))
+totalin_bystation=totalin_bystation[order(totalin_bystation$count,decreasing=TRUE),]
+
+write.table(totalin_bystation,file="total_in.csv",quote=FALSE,sep=",",row.names=FALSE,col.names=c('station','in'))
+
+#Q2: Get total volume of come-out-station by station
+dat2=dat[dat$price!=0 & dat$trasp=="??",]
+totalout_bystation=ddply(dat2,~station,summarise,count=sum(count))
+totalout_bystation=totalout_bystation[order(totalout_bystation$count,decreasing=TRUE),]
+write.table(totalout_bystation,file="total_out.csv",quote=FALSE,sep=",",row.names=FALSE,col.names=c('station','out'))
+
+
+#Q3: Get total volume of come-into-station by station and by hour
+tt_in_byst_bytime=ddply(dat1,.(station,hour),summarise,count=sum(count))
+write.table(tt_in_byst_bytime,file="total_in_bytime.csv",quote=FALSE,sep=",",row.names=FALSE,col.names=c('station','hour','in'))
+
+
+#Q4: Get total volume of come-out-station by station and by hour
+tt_out_byst_bytime=ddply(dat1,.(station,hour),summarise,count=sum(count))
+write.table(tt_out_byst_bytime,file="total_out_bytime.csv",quote=FALSE,sep=",",row.names=FALSE,col.names=c('station','hour','in'))
+
+#Q5: Get total travel cost by ID 
+cost_byid=ddply(dat,.(countID),summarise,count=sum(price))
+
+
+
+#dat3=dat[dat$trasp=="??",]
+#get_travel_time=function(x)
+#{
+#   a=sort(x)
+#   n1=length(a)
+#   t1=0
+#   for(i in 1:n1)
+#   {
+#     if(a[i+1]-a[i
+#	 ]) t1=
+#   }
+#}
+#cost_byid=ddply(dat3,.(countID),summarise,count=sum(price))
