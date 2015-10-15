@@ -36,5 +36,5 @@ taxi_a2_3.show(10)
 
 taxi_a2_3.count()
 ##661127
-taxi_a2_3.map(lambda line: (line.ID, line.empty, line.send, line.longitude, line.lattitude)).coalesce(1,True).saveAsTextFile("/user/nli26/taxia2")
+#taxi_a2_3.map(lambda line: (line.ID, line.empty, line.send, line.longitude, line.lattitude)).coalesce(1,True).saveAsTextFile("/user/nli26/taxia2")
 
