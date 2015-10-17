@@ -1,0 +1,69 @@
+<html>
+<head>
+	<title>Shanghai Metro</title>
+	<script type="text/javascript" src="d3.min.js"></script>
+	<style type="text/css">
+	</style>
+</head>
+<body>
+<div>
+	<svg id="test"></svg>
+</div>
+<script>
+	var data = [10, 100, 20, 25, 30, 60, 40, 45, 50, 60, 80, 50, 20];
+
+	var margin = {top: 20, right: 30, left: 50, bottom: 30};
+	var width = 960 - margin.left - margin.right;
+	var height = 800 - margin.top - margin.bottom;
+
+	var chart = d3.select("#test")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+				.attr("transform", "translate(" + (margin.left + width/2) + "," + (margin.top + height/2) + ")");
+
+	var c = chart.append("circle")
+		//.datum({previousR: 50})
+		.attr("r", 5)
+		.style("fill", "grey");
+
+	// c.transition()
+	// 	.duration(2000)
+	// 	.delay(500)
+	// 	.attrTween("r", rTween(200));
+
+	// function rTween(newR) {
+	// 	return function(d){
+	// 		//console.log(this);
+	// 		//console.log(this.attr("r"));
+	// 		//console.log(d);
+	// 		//console.log(d.previousR);
+	// 		var interpolater = d3.interpolateRound(d.previousR, newR);
+	// 		//d.previousR = newR;
+	// 		//console.log(d.previousR);
+	// 		return function(t){
+	// 			return interpolater(t);
+	// 		}
+	// 	}
+	// }
+
+	var intervalId = setInterval(draw, 1000);
+
+	function stopAnim(){
+		clearInterval(intervalId);
+	}
+
+	function draw(){
+		d = data.shift();
+		if (d) {
+			c.transition()
+		 	.duration(1000)
+		 	.attr("r", d);
+		}
+		else {
+			stopAnim();
+		}	
+	}
+
+</script>
+</body>
