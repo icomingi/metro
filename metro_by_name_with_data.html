@@ -1,0 +1,230 @@
+<html>
+<head>
+	<title>Shanghai Metro</title>
+	<script type="text/javascript" src="d3.min.js"></script>
+	<style type="text/css">
+	</style>
+</head>
+<body>
+<div>
+	<svg id="metro"></svg>
+</div>
+<script>
+	var line_color = {"1": "#e91b39", "2": "#8ac53f", "3": "#fad107", "4": "#502e8d", "5": "#9056a3", "6": "#d61870", "7": "#f37121", "8": "#009eda", "9": "#79c8ed", "10": "#bca8d1", "11": "#7e2131", "12": "#007c65", "13": "#e895c0", "16": "#8dd1bf"
+	};
+	//var data = [{'name': '黄陂南路', 'transfer': '普通站', 'y': 569, 'x': 541, 'line': '1', 'id': '0122'},
+	//{'name': '大华三路', 'transfer': '换乘站', 'y': 546, 'x': 544, 'line': '1', 'id': '0123'},
+	//{'name': '新闸路', 'transfer': '普通站', 'y': 521, 'x': 483, 'line': '1', 'id': '0124'}];
+
+	var connections;
+
+	var stations;
+
+	// var entries = [
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 50}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 80}], 
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 100}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}], 
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 150}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 180}], 
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 120}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 150}], 
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 90}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 80}], 
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 70}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}],
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 70}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 10}],
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 80}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 30}],
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 40}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}],
+	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 10}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 120}]
+	// ];
+
+	var entries;
+
+	var margin = {top: 20, right: 30, left: 50, bottom: 30};
+	var width = 960 - margin.left - margin.right;
+	var height = 800 - margin.top - margin.bottom;
+
+	var chart = d3.select("#metro")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var x = d3.scale.linear().domain([121.13, 121.81]).range([0, width]);
+	var y = d3.scale.linear().domain([30.99, 31.42]).range([height, 0]);
+	var r = d3.scale.sqrt().domain([0, 500]).range([0, 30]);
+	var opacity_scaler = d3.scale.linear().domain([0, 500]).range([0.3, 0.8]);
+
+	var xAxis = d3.svg.axis()
+				.scale(x)
+				.orient("bottom");
+	var yAxis = d3.svg.axis()
+				.scale(y)
+				.orient("left");
+
+	var intervalId;
+
+	d3.json("connections_by_station_name.json", function(error, json){
+		if (error) return console.warn(error);
+		connections = json;
+		d3.json("stations_by_name_with_alias.json", function(error, json){
+			if (error) return console.warn(error);
+			stations = json;
+			visualize();
+			// d3.csv("Every5MinuteEnterForEachStation0401.csv", function (d) {
+			// 	return {
+			// 		"name": d["name"],
+			// 		"entry": +d["entry"],
+			// 		"minutegroup": d["minutegroup"]
+			// 	};
+			// }, function(error, rows) {
+			// 	if (error) return console.warn(error);
+			// 	entries = rows;
+			// 	// update(entries.shift());
+			// });
+			d3.json("every5minute_entry0401.json", function(error, json){
+				if (error) return console.warn(error);
+				entries = json;
+				// initialize_entries();
+				update();
+				intervalId = setInterval(update, 1500);
+			});
+		});
+	});
+
+	function visualize() {
+
+		chart.selectAll("line.route")
+			.data(connections)
+			.enter()
+			.append("svg:line")
+			.attr("class", "route")
+			.attr("stroke-width", 3)
+			.attr("id", function(d) { return d[0] + "-" + d[1]; })
+			.attr("stroke", function(d){ return line_color[d[2]]; })
+			.attr("stroke-linecap", "round")
+			.attr("x1", function(d) { return x(parseFloat(stations[d[0]]['LNG'])); })
+			.attr("y1", function(d) { return y(parseFloat(stations[d[0]]['LAT'])); })
+			.attr("x2", function(d) { return x(parseFloat(stations[d[1]]['LNG'])); })
+			.attr("y2", function(d) { return y(parseFloat(stations[d[1]]['LAT'])); });
+
+
+		chart.selectAll("circle.station")
+			.data(Object.keys(stations))
+			.enter()
+			.append("svg:circle")
+			.attr("class", "station")
+			.attr("id", function(d){ return d; })
+			.attr("cx", function(d){ return x(parseFloat(stations[d]['LNG'])) ;})
+			.attr("cy", function(d){ return y(parseFloat(stations[d]['LAT'])) ;})
+			.attr("r", 2)
+			.style("stroke", "grey")
+			.style("fill", "#ffffff");
+
+		var line_no = Object.keys(line_color).sort(function(a, b) {
+			return parseInt(a) - parseInt(b);
+		});
+
+		var legendEnter = chart.append("g")
+			.attr("transform", "translate(" + (width - 30) + ",0)")
+			.selectAll("g")
+			.data(line_no)
+			.enter()
+			.append("g")
+			.attr("class", "line_no")
+			.attr("transform", function (d, i) {
+				return "translate(0 ," + 28*i + ")";
+			});
+		
+		legendEnter.append("circle")
+			.attr("r", 10)
+			// .attr("cy", )
+			.style("fill", function (d) { return line_color[d]; });
+
+		legendEnter.append("text")
+			.attr("text-anchor", "middle")
+			// .attr("y", 5)
+			.attr("dy", "0.35em")
+			.text(function (d) { return d;} )
+			.style("fill", "white");
+			// .attr("dx", function (d) { return -20;} );
+
+		chart.append('g')
+			.attr("class", "x axis")
+			.attr("transform", "translate(0, " + height + ")")
+			.call(xAxis);
+	
+		chart.append('g')
+			.attr("class", "y axis")
+			.call(yAxis);
+	}
+
+	function initialize_entries(){
+		chart.selectAll("circle.entry")
+			.data(Object.keys(stations))
+			.enter()
+			.append("svg:circle")
+			.attr("class", "entry")
+			// .attr("id", function(d){ return d; })
+			.attr("cx", function(d){ return x(stations[d]['LNG']);})
+			.attr("cy", function(d){ return y(stations[d]['LAT']);})
+			.attr("r", 0)
+			// .style("stroke", "grey")
+			.style("fill", function(d) { return line_color[stations[d]["LINE_NO"]]; });
+	}
+
+	function draw(oneTick){
+		var circles = chart.selectAll("circle.entry");
+		var circlesUpdate = circles.data(oneTick, function(d){ return d["name"]; });
+
+		circlesUpdate.transition()
+			.duration(1000)
+			.attr("r", function(d){ return r(d["entry"]); })
+			.attr("cx", function(d) { return x(stations[d["name"]]["LNG"]); })
+			.attr("cy", function(d) { 
+				// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
+				// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
+				// console.log(y(stations[d["name"]]["LAT"]));
+				return y(stations[d["name"]]["LAT"]); })
+			.style("fill", function(d) { 
+				return line_color[stations[d["name"]]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); });
+
+		circlesUpdate.enter().append("circle")
+			.attr("class", "entry")
+			.attr("id", function(d) { return d["name"]; })
+			.attr("cy", function(d) {
+				if (stations[d["name"]]["LAT"] == undefined) { console.log(d["name"]); }
+				return y(parseFloat(stations[d["name"]]["LAT"])); 
+			})
+			.attr("cx", function(d) { return x(parseFloat(stations[d["name"]]["LNG"])); })
+			.attr("r", 0)
+			.style("fill", function(d) { 
+				return line_color[stations[d["name"]]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); })
+			.transition()
+			.duration(1000)
+			.attr("r", function(d) { return r(d["entry"]); });
+
+		circlesUpdate.exit().remove();
+			// .transition()
+			// .duration(1000)
+			// .attr("r", 0)
+			// .style("fill-opacity", 0);
+	}
+
+	function update(){
+		var oneTick = entries.shift();
+		// console.log(oneTick);
+		if (oneTick) {
+			draw(oneTick);
+		}
+		else {
+			stopAnimation();
+		}
+	}
+
+	// var intervalId = setInterval(update, 1500);
+
+	function stopAnimation(){
+		clearInterval(intervalId);
+	}
+
+</script>
+</body>
+</html>
