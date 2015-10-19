@@ -4,7 +4,7 @@ cd spark-1.4.1-bin-hadoop2.6
 
 
 
-from pyspark import SparkContext, SparkConf
+from pyspark import SparkContext, kj
 from pyspark.sql import SQLContext
 from pyspark.sql.types import *
 
