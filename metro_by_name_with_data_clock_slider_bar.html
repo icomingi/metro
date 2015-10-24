@@ -66,6 +66,10 @@
 			fill: white;
 		}
 
+		.lengend-header {
+			font: 1.5em sans-serif;
+		}
+
 	</style>
 </head>
 <body>
@@ -111,7 +115,9 @@
 
 	var barArea;
 
-	var x = d3.scale.linear().domain([121.13, 121.81]).range([0, width]);
+	var clockGroup;
+
+	var x = d3.scale.linear().domain([121.16, 121.81]).range([0, width]);
 	var y = d3.scale.linear().domain([30.99, 31.42]).range([height, 0]);
 	var r = d3.scale.sqrt().domain([0, 500]).range([0, 30]);
 	var opacity_scaler = d3.scale.linear().domain([0, 500]).range([0.3, 0.8]);
@@ -126,6 +132,10 @@
 				.scale(y)
 				.orient("left");
 
+	pi = Math.PI;
+	scaleMins = d3.scale.linear().domain([0, 59 + 59/60]).range([0, 2 * pi]);
+	scaleHours = d3.scale.linear().domain([0, 11 + 59/60]).range([0, 2 * pi]);
+
 	var intervalId;
 
 	var minutes = 72;
@@ -136,6 +146,15 @@
 		if (hour<10) hour = '0' + hour;
 		if (minute<10) minute = '0' + minute;
 		return hour + ":" + minute;
+	}
+
+	function minutes_2_object(min){
+		var hour = min * 5 / 60;
+		var minute = Math.round(min * 5 % 60);
+		return data = [
+			{ "unit": "minutes", "numeric": minute },
+			{ "unit": "hours", "numeric": hour }
+		];
 	}
 
 	d3.json("connections_by_station_name.json", function(error, json){
@@ -163,8 +182,8 @@
 				// initialize_entries();
 				// update();
 				// intervalId = setInterval(update, 1000);
-				// startAnimation();
-				enableInteraction();
+				startAnimation();
+				// enableInteraction();
 			});
 
 
@@ -253,21 +272,49 @@
 						.attr("height", 200)
 						.attr("transform", "translate(" + (width-200) + ", " + 50 + ")");
 
+		barArea.append("text")
+				.attr("class", "lengend-header")
+				.attr("x", "-40")
+				.attr("y", "-20")
+				.attr("dy", ".35em")
+				.text("流量TOP10站点排行(人次/5分钟)");
+
 		//Create a digital clock
-		var clock = chart.append("g")
-						// .attr("id", "clock")
-						.attr("transform", "translate(" + (width-200) + ", 5)");
-
-		clock.append("text")
-			 .attr("id", "clock")
-			 .text(format_minutes(minutes));
+		clockGroup = chart.append("g")
+						.attr("width", 200)
+						.attr("height", 200)
+						.attr("transform", "translate(" + (width-450) + ", 50)");
 
 		// clock.append("text")
-		// 	 .text(":");
+		// 	 .attr("id", "clock")
+		// 	 .text(format_minutes(minutes));
 
-		// clock.append("text")
-		// 	 .attr("id", "minute")
-		// 	 .text("00");
+		clockGroup.append("svg:circle")
+  			.attr("r", 40).attr("fill", "none")
+  			.attr("class", "clock outercircle")
+  			.attr("stroke", "black")
+  			.attr("stroke-width", 1);
+
+		clockGroup.append("svg:circle")
+  			.attr("r", 3)
+  			.attr("fill", "black")
+  			.attr("class", "clock innercircle");
+
+  		clockGroup.selectAll('.hour-tick')
+			.data(d3.range(0, 12)).enter()
+			.append('line')
+			.attr('class', 'hour-tick')
+			.attr('x1', 0)
+			.attr('x2', 0)
+			.attr('y1', 39)
+			.attr('y2', 37)
+			.attr('transform',function(d){
+				return 'rotate(' + scaleHours(d)*180/pi + ')';
+			})
+			.attr("stroke", "black")
+			.attr("stroke-width", 1);
+
+  		renderClock(minutes_2_object(72));
 
 		// chart.append('g')
 		// 	.attr("class", "x axis")
@@ -416,16 +463,84 @@
 			// .tween("text", tweenText(minutes));
 	}
 
+	function renderClock(data){
+		var hourArc, minuteArc;
+
+  		// clockGroup.selectAll(".clockhand").remove();
+
+  		minuteArc = d3.svg.arc()
+    		.innerRadius(0)
+    		.outerRadius(35)
+    		.startAngle(function(d) {
+    			return scaleMins(d.numeric);
+  			})
+    		.endAngle(function(d) {
+    			return scaleMins(d.numeric);
+ 			});
+
+  		hourArc = d3.svg.arc()
+		    .innerRadius(0)
+		    .outerRadius(20)
+    		.startAngle(function(d) {
+    			return scaleHours(d.numeric % 12);
+  			})
+    		.endAngle(function(d) {
+    			return scaleHours(d.numeric % 12);
+  			});
+
+  		var clockUpdate = clockGroup.selectAll(".clockhand")
+    		.data(data, function(d) { return d["unit"]; });
+
+    	clockUpdate.enter()
+    		.append("svg:path")
+    		.attr("d", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return secondArc(d);
+	      		} else if (d.unit === "minutes") {
+			        return minuteArc(d);
+			    } else if (d.unit === "hours") {
+	        		return hourArc(d);
+		        }
+    		})
+    		.attr("class", "clockhand")
+    		.attr("stroke", "black")
+    		.attr("stroke-width", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return 2;
+	      		} else if (d.unit === "minutes") {
+	        		return 2;
+	      		} else if (d.unit === "hours") {
+	        		return 3;
+	      		}
+    		})
+    		.attr("fill", "none");
+
+    	clockUpdate.transition()
+    		.duration(1000)
+    		.attr("d", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return secondArc(d);
+	      		} else if (d.unit === "minutes") {
+			        return minuteArc(d);
+			    } else if (d.unit === "hours") {
+	        		return hourArc(d);
+		        }
+    		});
+
+		}
+
 	function update(){
 		// var oneTick = entries.shift();
 		var oneTick = entries.slice(minutes, minutes+1)[0];
 		// console.log(oneTick);
 		if (minutes < 23*60/5) {
+			renderClock(minutes_2_object(minutes))
 			minutes++;
 			draw(oneTick);
 		}
 		else {
 			minutes = 96;
+			renderClock(minutes_2_object(minutes))
 			draw(entries.slice(minutes, minutes+1)[0]);
 			stopAnimation();
 			enableInteraction();
@@ -521,6 +636,7 @@
   			handle.attr("transform", "translate(" + timeScale(value) + ",0)");
   			handle.select('text').text(format_minutes(value));
   			draw(entries.slice(value, value+1)[0]);
+  			renderClock(minutes_2_object(value));
 		}
 
 	}
