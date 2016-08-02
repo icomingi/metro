@@ -403,7 +403,7 @@
 
 		var circleLegend = chart.append("g")
     		.attr("class", "legend")
-    		.attr("transform", "translate(" + (width - 220) + "," + (height - 5) + ")")
+    		.attr("transform", "translate(" + (width - 200) + "," + (height - 200) + ")")
   			.selectAll("g")
     		.data([5000, 10000, 20000])
   			.enter().append("g");
@@ -416,6 +416,17 @@
     		.attr("y", function(d) { return -2 * r(d); })
     		.attr("dy", "1.3em")
     		.text(function(d) {return d; });
+
+  		circleLegend.append("text")
+  			.attr("y", 10)
+  			.text("人次")
+
+  		chart.append("g")
+  			.attr("transform", "translate(" + (width - 250) + ", " + height + ")")
+  			.append("text")
+  			.attr("class", "data-source")
+  			.text("数据源: 上海地铁2015年4月一卡通刷卡数据");
+
 
 		//Create a digital clock
 		// clockGroup = chart.append("g")
