@@ -1,0 +1,759 @@
+<html>
+<head>
+	<title>Shanghai Metro</title>
+	<script type="text/javascript" src="d3.min.js"></script>
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<style type="text/css">
+		#clock {
+			font-family: sans-serif;
+			font-size: 1.2em;
+			font-weight: 300;
+			color: gray;
+		}
+
+		body {
+		  /*background-color: #393939;*/
+		  font-size: 12px;
+		  font-family: 'Raleway', sans-serif;
+		}
+
+		p {
+		  color: white;
+		  margin: 50px;
+		}
+
+		a {
+		  color: #4FDEF2;
+		}
+
+		.slider_axis {
+		  fill: gray;
+		  -webkit-user-select: none;
+		  -moz-user-select: none;
+		  user-select: none;
+		}
+
+		.slider_axis .halo {
+		  stroke: gray;
+		  stroke-width: 2px;
+		  stroke-linecap: round;
+		}
+
+		.slider .handle path {
+		  stroke: black;
+		  stroke-width: 3px;
+		  stroke-linecap: round;
+		  pointer-events: none;
+		}
+
+		.slider .handle text {
+		  fill: black;
+		  text-align: center;
+		  font-size: 1.5em;
+		}
+
+		.legend circle {
+  			fill: none;
+  			stroke: #ccc;
+		}
+
+		.legend text {
+  			fill: #777;
+  			font: 10px sans-serif;
+  			text-anchor: middle;
+		}
+
+		.entry-value {
+			fill: white;
+		}
+
+		.lengend-header {
+			font: 2em sans-serif;
+		}
+
+		.center-block {
+  			display: block;
+  			margin-left: auto;
+  			margin-right: auto;
+		}
+
+		.label text {
+			font: 1em;
+		}
+
+	</style>
+</head>
+<body>
+<div>
+	<div>
+		<h2 class="text-center">地铁上班族生活和工作区域分布图<h2>
+		<div class="text-center">
+			<div class="btn-group" role="group" aria-label="...">
+	  			<button type="button" class="btn btn-default" id="weekday">生活区域</button>
+	  			<button type="button" class="btn btn-default" id="weekend">工作区域</button>
+			</div>
+		</div>
+	</div>
+	<div><svg id="metro_by_promotion"></svg></div>
+</div>
+<script>
+	var line_color = {"1": "#e91b39", "2": "#8ac53f", "3": "#fad107", "4": "#502e8d", "5": "#9056a3", "6": "#d61870", "7": "#f37121", "8": "#009eda", "9": "#79c8ed", "10": "#bca8d1", "11": "#7e2131", "12": "#007c65", "13": "#e895c0", "16": "#8dd1bf"
+	};
+
+	var connections;
+
+	var stations;
+
+	var entries;
+
+	var margin = {top: 20, right: 30, left: 50, bottom: 30};
+	var width = 1200 - margin.left - margin.right;
+	var height = 800 - margin.top - margin.bottom;
+
+	var barHeight = 20;
+
+	var chart = d3.select("#metro_by_promotion")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var barArea;
+
+	var clockGroup;
+
+	var weekdayData;
+
+	var weekendData;
+
+	var x = d3.scale.linear().domain([121.16, 121.81]).range([0, width]);
+	var y = d3.scale.linear().domain([30.99, 31.42]).range([height, 0]);
+	var r = d3.scale.sqrt().domain([0, 15000]).range([0, 40]);
+	var opacity_scaler = d3.scale.linear().domain([0, 15000]).range([0.3, 0.8]);
+
+	var rankingY = d3.scale.ordinal().rangeRoundBands([0, 200], .1);
+	var rankingX = d3.scale.linear().range([0, 200]);
+
+	var xAxis = d3.svg.axis()
+				.scale(x)
+				.orient("bottom");
+	var yAxis = d3.svg.axis()
+				.scale(y)
+				.orient("left");
+
+	pi = Math.PI;
+	scaleMins = d3.scale.linear().domain([0, 59 + 59/60]).range([0, 2 * pi]);
+	scaleHours = d3.scale.linear().domain([0, 11 + 59/60]).range([0, 2 * pi]);
+
+	var isWeekday = true;
+
+	function toggleWeekday(){
+		if (isWeekday){
+			visualizePromotion(weekdayData);
+			$("#weekday").removeClass("btn-default").addClass("btn-primary");
+			$("#weekend").removeClass("btn-primary").addClass("btn-default");
+		}
+		else{
+			visualizePromotion(weekendData);
+			$("#weekday").removeClass("btn-primary").addClass("btn-default");
+			$("#weekend").removeClass("btn-default").addClass("btn-primary");
+			// isWeekday = false;
+		}
+	}
+
+	var intervalId;
+
+	var minutes = 72;
+
+	function format_minutes(min){
+		var hour = Math.floor(min * 5 / 60);
+		var minute = Math.round(min * 5 % 60);
+		if (hour<10) hour = '0' + hour;
+		if (minute<10) minute = '0' + minute;
+		return hour + ":" + minute;
+	}
+
+	function minutes_2_object(min){
+		var hour = min * 5 / 60;
+		var minute = Math.round(min * 5 % 60);
+		return data = [
+			{ "unit": "minutes", "numeric": minute },
+			{ "unit": "hours", "numeric": hour }
+		];
+	}
+
+	d3.json("connections_by_station_name.json", function(error, json){
+		if (error) return console.warn(error);
+		connections = json;
+		d3.json("stations_by_name_with_alias.json", function(error, json){
+			if (error) return console.warn(error);
+			stations = json;
+			visualize();
+
+			d3.json("commuter_living_area.json", function(error, json){
+				if (error) return console.warn(error);
+				// console.log(rows.slice(0, 20));
+				weekdayData = json;
+				toggleWeekday();
+				$("#weekday").on("click", function(e){
+					isWeekday = true;
+					toggleWeekday();
+				});
+			});
+
+			d3.json("commuter_working_area.json", function(error, json){
+				if (error) return console.warn(error);
+				weekendData = json;
+				$("#weekend").on("click", function(e){
+					isWeekday = false;
+					toggleWeekday();
+				});
+			});
+
+		});
+	});
+
+	function startAnimation(){
+		intervalId = setInterval(update, 1000);
+	}
+
+	function visualizePromotion(data){
+		function promo_st_name(d){
+			return d[0];
+		}
+
+		function promo_st_entry(d){
+			return d[1];
+		}
+
+		// r.domain([0, promo_st_entry(data[0])]);
+		// opacity_scaler.domain([0, promo_st_entry(data[0])]).range([0.3, 1]);
+
+		var circles = chart.selectAll("circle.entry");
+		var circlesUpdate = circles.data(data, promo_st_name);
+
+		circlesUpdate.transition()
+			.duration(500)
+			.attr("r", function(d){ return r(promo_st_entry(d)); })
+			.attr("cx", function(d) { return x(stations[promo_st_name(d)]["LNG"]); })
+			.attr("cy", function(d) { 
+				// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
+				// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
+				// console.log(y(stations[d["name"]]["LAT"]));
+				return y(stations[promo_st_name(d)]["LAT"]); })
+			.style("fill", function(d) { 
+				return line_color[stations[promo_st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(promo_st_entry(d)); });
+
+		circlesUpdate.enter().append("circle")
+			.attr("class", "entry")
+			.attr("id", promo_st_name)
+			.attr("cy", function(d) {
+				// if (stations[promo_st_name(d)]["LAT"] == undefined) { console.log(d["name"]); }
+				// console.log(promo_st_name(d));
+				return y(parseFloat(stations[promo_st_name(d)]["LAT"])); 
+			})
+			.attr("cx", function(d) { return x(parseFloat(stations[promo_st_name(d)]["LNG"])); })
+			.attr("r", 0)
+			.style("fill", function(d) { 
+				return line_color[stations[promo_st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(promo_st_entry(d)); })
+			.transition()
+			.duration(500)
+			.attr("r", function(d) { return r(promo_st_entry(d)); });
+
+		circlesUpdate.exit().remove();
+
+		var top_stations = data.slice(0, 10);
+
+		var bars = barArea.selectAll("g.bar")
+					.data(top_stations, promo_st_name);
+
+		top_station_names = top_stations.map(function(d){ return promo_st_name(d); });
+
+		rankingY.domain(top_station_names);
+		// console.log(top[0]);
+		rankingX.domain([0, promo_st_entry(top_stations[0])]);
+
+		var barEnter = bars.enter().insert("g", ".axis")
+			.attr("class", "bar")
+			.attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+
+		barEnter.append("rect")
+			.attr("width", function(d) { return rankingX(promo_st_entry(d)); })
+			.attr("height", rankingY.rangeBand())
+			.style("fill", function(d) { 
+				return line_color[stations[promo_st_name(d)]["LINE_NO"]]; 
+			});
+			// .style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
+
+		barEnter.append("text")
+			.attr("class", "label")
+			.attr("x", -3)
+			.attr("y", rankingY.rangeBand()/2)
+			.attr("dy", ".35em")
+			.attr("text-anchor", "end")
+			.text(promo_st_name);
+
+		barEnter.append("text")
+			.attr("class", "entry-value")
+			.attr("x", function (d) { return rankingX(promo_st_entry(d)) - 3; })
+			.attr("y", rankingY.rangeBand() / 2)
+			.attr("dy", ".35em")
+			.attr("text-anchor", "end")
+			.text(promo_st_entry);
+
+		var barUpdate = d3.transition(bars)
+			.attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+
+		barUpdate.select("rect")
+			.attr("width", function(d) { return rankingX(promo_st_entry(d)); });
+			// .style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
+
+		barUpdate.select(".entry-value")
+			.attr("x", function (d) { return rankingX(promo_st_entry(d)) - 3; })
+			.text(promo_st_entry);
+
+		// suppose the whole place is 300*300	
+
+		var barExit = d3.transition(bars.exit())
+      		.attr("transform", function(d) { return "translate(0," + 400 + ")"; })
+      		.style("fill-opacity", 0)
+      		.remove();
+
+  		barExit.select("rect")
+      		.attr("width", function(d) { return rankingX(promo_st_entry(d)); });
+
+  		barExit.select(".entry-value")
+      		.attr("x", function(d) { return rankingX(promo_st_entry(d)) - 3; })
+      		.text(promo_st_entry);
+
+	}
+
+	function visualize() {
+
+		chart.selectAll("line.route")
+			.data(connections)
+			.enter()
+			.append("svg:line")
+			.attr("class", "route")
+			.attr("stroke-width", 3)
+			.attr("id", function(d) { return d[0] + "-" + d[1]; })
+			.attr("stroke", function(d){ return line_color[d[2]]; })
+			.attr("stroke-linecap", "round")
+			.attr("x1", function(d) { return x(parseFloat(stations[d[0]]['LNG'])); })
+			.attr("y1", function(d) { return y(parseFloat(stations[d[0]]['LAT'])); })
+			.attr("x2", function(d) { return x(parseFloat(stations[d[1]]['LNG'])); })
+			.attr("y2", function(d) { return y(parseFloat(stations[d[1]]['LAT'])); });
+
+
+		chart.selectAll("circle.station")
+			.data(Object.keys(stations))
+			.enter()
+			.append("svg:circle")
+			.attr("class", "station")
+			.attr("id", function(d){ return d; })
+			.attr("cx", function(d){ return x(parseFloat(stations[d]['LNG'])) ;})
+			.attr("cy", function(d){ return y(parseFloat(stations[d]['LAT'])) ;})
+			.attr("r", 2)
+			.style("stroke", "grey")
+			.style("fill", "#ffffff");
+
+		var line_no = Object.keys(line_color).sort(function(a, b) {
+			return parseInt(a) - parseInt(b);
+		});
+
+		var legendEnter = chart.append("g")
+			.attr("transform", "translate(40, " + (height - 450) + ")")
+			.selectAll("g")
+			.data(line_no)
+			.enter()
+			.append("g")
+			.attr("class", "line_no")
+			.attr("transform", function (d, i) {
+				return "translate(0 ," + 28*i + ")";
+			});
+		
+		legendEnter.append("circle")
+			.attr("r", 10)
+			// .attr("cy", )
+			.style("fill", function (d) { return line_color[d]; });
+
+		legendEnter.append("text")
+			.attr("text-anchor", "middle")
+			// .attr("y", 5)
+			.attr("dy", "0.35em")
+			.text(function (d) { return d;} )
+			.style("fill", "white");
+			// .attr("dx", function (d) { return -20;} );
+
+    	barArea = chart.append("g")
+						.attr("width", 200)
+						.attr("height", 200)
+						.attr("transform", "translate(" + (width-250) + ", " + 50 + ")");
+
+		barArea.append("text")
+				.attr("class", "lengend-header")
+				.attr("x", "-40")
+				.attr("y", "-20")
+				.attr("dy", ".35em")
+				.text("地铁上班族分布区域TOP 10");
+
+		var circleLegend = chart.append("g")
+    		.attr("class", "legend")
+    		.attr("transform", "translate(" + (width - 200) + "," + (height - 200) + ")")
+  			.selectAll("g")
+    		.data([5000, 10000, 20000])
+  			.enter().append("g");
+
+		circleLegend.append("circle")
+    		.attr("cy", function(d) { return -r(d); })
+    		.attr("r", r);
+
+		circleLegend.append("text")
+    		.attr("y", function(d) { return -2 * r(d); })
+    		.attr("dy", "1.3em")
+    		.text(function(d) {return d; });
+
+  		circleLegend.append("text")
+  			.attr("y", 10)
+  			.text("人")
+
+  		chart.append("g")
+  			.attr("transform", "translate(" + (width - 250) + ", " + height + ")")
+  			.append("text")
+  			.attr("class", "data-source")
+  			.text("数据源: 上海地铁2015年4月一卡通刷卡数据");
+
+		//Create a digital clock
+		// clockGroup = chart.append("g")
+		// 				.attr("width", 200)
+		// 				.attr("height", 200)
+		// 				.attr("transform", "translate(" + (width-450) + ", 50)");
+
+		// clockGroup.append("svg:circle")
+	}
+
+	function st_name(d){
+		return d[0];
+	}
+
+	function st_entry(d){
+		// console.log(d);
+		return d[1];
+	}
+
+	function draw(oneTick){
+		var circles = chart.selectAll("circle.entry");
+		var circlesUpdate = circles.data(oneTick, st_name);
+
+		circlesUpdate.transition()
+			.duration(1000)
+			.attr("r", function(d){ return r(st_entry(d)); })
+			.attr("cx", function(d) { return x(stations[st_name(d)]["LNG"]); })
+			.attr("cy", function(d) { 
+				// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
+				// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
+				// console.log(y(stations[d["name"]]["LAT"]));
+				return y(stations[st_name(d)]["LAT"]); })
+			.style("fill", function(d) { 
+				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
+
+		circlesUpdate.enter().append("circle")
+			.attr("class", "entry")
+			.attr("id", st_name)
+			.attr("cy", function(d) {
+				if (stations[st_name(d)]["LAT"] == undefined) { console.log(d["name"]); }
+				return y(parseFloat(stations[st_name(d)]["LAT"])); 
+			})
+			.attr("cx", function(d) { return x(parseFloat(stations[st_name(d)]["LNG"])); })
+			.attr("r", 0)
+			.style("fill", function(d) { 
+				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); })
+			.transition()
+			.duration(1000)
+			.attr("r", function(d) { return r(st_entry(d)); });
+
+		circlesUpdate.exit().remove();
+			// .transition()
+			// .duration(1000)
+			// .attr("r", 0)
+			// .style("fill-opacity", 0);
+
+		// console.log(oneTick);
+
+		top_stations = oneTick.sort(function compare(a, b) { return st_entry(b) - st_entry(a); }).slice(0, 10);
+
+		// console.log(top_stations);
+
+		var bars = barArea.selectAll("g.bar")
+					.data(top_stations, st_name);
+
+		top_station_names = top_stations.map(function(d){ return st_name(d); });
+
+		rankingY.domain(top_station_names);
+		// console.log(top[0]);
+		rankingX.domain([0, st_entry(top_stations[0])]);
+
+		var barEnter = bars.enter().insert("g", ".axis")
+			.attr("class", "bar")
+			.attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+
+		barEnter.append("rect")
+			.attr("width", function(d) { return rankingX(st_entry(d)); })
+			.attr("height", rankingY.rangeBand())
+			.style("fill", function(d) { 
+				return line_color[stations[st_name(d)]["LINE_NO"]]; 
+			});
+			// .style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
+
+		barEnter.append("text")
+			.attr("class", "label")
+			.attr("x", -3)
+			.attr("y", rankingY.rangeBand()/2)
+			.attr("dy", ".35em")
+			.attr("text-anchor", "end")
+			.text(st_name);
+
+		barEnter.append("text")
+			.attr("class", "entry-value")
+			.attr("x", function (d) { return rankingX(st_entry(d)) - 3; })
+			.attr("y", rankingY.rangeBand() / 2)
+			.attr("dy", ".35em")
+			.attr("text-anchor", "end")
+			.text(st_entry);
+
+		var barUpdate = d3.transition(bars)
+			.attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+
+		barUpdate.select("rect")
+			.attr("width", function(d) { return rankingX(st_entry(d)); });
+			// .style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
+
+		barUpdate.select(".entry-value")
+			.attr("x", function (d) { return rankingX(st_entry(d)) - 3; })
+			.text(st_entry);
+
+		// suppose the whole place is 300*300	
+
+		var barExit = d3.transition(bars.exit())
+      		.attr("transform", function(d) { return "translate(0," + 400 + ")"; })
+      		.style("fill-opacity", 0)
+      		.remove();
+
+  		barExit.select("rect")
+      		.attr("width", function(d) { return rankingX(st_entry(d)); });
+
+  		barExit.select(".entry-value")
+      		.attr("x", function(d) { return rankingX(st_entry(d)) - 3; })
+      		.text(st_entry);
+
+		
+			// .tween("text", tweenText(minutes));
+	}
+
+	function renderClock(data){
+		var hourArc, minuteArc;
+
+  		// clockGroup.selectAll(".clockhand").remove();
+
+  		minuteArc = d3.svg.arc()
+    		.innerRadius(0)
+    		.outerRadius(35)
+    		.startAngle(function(d) {
+    			return scaleMins(d.numeric);
+  			})
+    		.endAngle(function(d) {
+    			return scaleMins(d.numeric);
+ 			});
+
+  		hourArc = d3.svg.arc()
+		    .innerRadius(0)
+		    .outerRadius(20)
+    		.startAngle(function(d) {
+    			return scaleHours(d.numeric % 12);
+  			})
+    		.endAngle(function(d) {
+    			return scaleHours(d.numeric % 12);
+  			});
+
+  		var clockUpdate = clockGroup.selectAll(".clockhand")
+    		.data(data, function(d) { return d["unit"]; });
+
+    	clockUpdate.enter()
+    		.append("svg:path")
+    		.attr("d", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return secondArc(d);
+	      		} else if (d.unit === "minutes") {
+			        return minuteArc(d);
+			    } else if (d.unit === "hours") {
+	        		return hourArc(d);
+		        }
+    		})
+    		.attr("class", "clockhand")
+    		.attr("stroke", "black")
+    		.attr("stroke-width", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return 2;
+	      		} else if (d.unit === "minutes") {
+	        		return 2;
+	      		} else if (d.unit === "hours") {
+	        		return 3;
+	      		}
+    		})
+    		.attr("fill", "none");
+
+    	clockUpdate.transition()
+    		.duration(1000)
+    		.attr("d", function(d) {
+	      		if (d.unit === "seconds") {
+	        		// return secondArc(d);
+	      		} else if (d.unit === "minutes") {
+			        return minuteArc(d);
+			    } else if (d.unit === "hours") {
+	        		return hourArc(d);
+		        }
+    		});
+
+   //  	d3.select("#clock")
+			// .transition()
+			// .duration(1000)
+			// .text(format_minutes(minutes-1));
+		clockGroup.select("text.clock-reading")
+			.transition()
+			.duration(1000)
+			.text(format_minutes(minutes));
+
+		}
+
+	function update(){
+		// var oneTick = entries.shift();
+		var oneTick = entries.slice(minutes, minutes+1)[0];
+		// console.log(oneTick);
+		if (minutes < 23*60/5) {
+			renderClock(minutes_2_object(minutes))
+			draw(oneTick);
+			minutes++;
+		}
+		else {
+			minutes = 96;
+			renderClock(minutes_2_object(minutes))
+			draw(entries.slice(minutes, minutes+1)[0]);
+			stopAnimation();
+			enableInteraction();
+		}
+	}
+
+	function stopAnimation(){
+		clearInterval(intervalId);
+		// d3.select("#clock")
+		// 	.attr("display", "none");
+	}
+
+	function enableInteraction(){
+		var width = 600;
+		var height = 200;
+
+		var startingValue = minutes;
+
+		var timeScale = d3.scale.linear()
+                  .domain([60, 276])
+                  .range([0, width])
+                  .clamp(true);
+
+		function generateArray(start, end) {
+		  var array = [];
+		  for (var i=start; i < end+1; i = i+24){
+		    array.push(i);
+		  }
+		  return array;
+		}
+
+		var brush = d3.svg.brush()
+  			.x(timeScale)
+  			.extent([startingValue, startingValue])
+  			.on("brush", brushed);
+
+		var slider_container = chart.append("g")
+			.attr("width", width)
+			.attr("height", height)
+			.attr("transform", "translate(250, " + 650 + ")");
+
+		slider_container.append("g")
+			.attr("class", "slider_axis")
+			.attr("transform", "translate(0," + height / 2 + ")")
+			.call(d3.svg.axis()
+			  .scale(timeScale)
+			  .orient("bottom")
+			  .tickFormat(function(d) {
+			    return format_minutes(d);
+			  })
+			  .tickSize(0)
+			  .tickPadding(12)
+			  .tickValues(generateArray(timeScale.domain()[0], timeScale.domain()[1] )))
+			 .select(".domain")
+			 .select(function() {
+			    // console.log(this);
+			    return this.parentNode.appendChild(this.cloneNode(true));
+			 })
+			 .attr("class", "halo");
+
+		var slider = slider_container.append("g")
+  			.attr("class", "slider")
+  			.call(brush);
+
+  		slider.selectAll(".extent,.resize")
+    		.remove();
+
+		slider.select(".background")
+  			.attr("height", height);
+
+		var handle = slider.append("g")
+  			.attr("class", "handle")
+
+		handle.append("path")
+  			.attr("transform", "translate(0," + height / 2 + ")")
+  			.attr("d", "M 0 -10 V 10")
+
+		handle.append('text')
+  			.text(startingValue)
+  			.attr("transform", "translate(" + (-22) + " ," + (height / 2 - 18) + ")");
+
+		slider
+  			.call(brush.event)
+
+		function brushed() {
+  			var value = brush.extent()[0];
+
+  			if (d3.event.sourceEvent) { // not a programmatic event
+    			// value = Math.floor(timeScale.invert(d3.mouse(this)[0])/5);
+    			scaleValue = timeScale.invert(d3.mouse(this)[0]);
+    			value = Math.floor(scaleValue);
+    			brush.extent([value, value]);
+  			}
+
+  			handle.attr("transform", "translate(" + timeScale(value) + ",0)");
+  			handle.select('text').text(format_minutes(value));
+  			draw(entries.slice(value, value+1)[0]);
+  			renderClock(minutes_2_object(value));
+  			// console.log(clockGroup.select("text.clock-reading"));
+  			clockGroup.select("text.clock-reading").text(format_minutes(value));
+		}
+
+	}
+
+	function hour2min(s){
+		arr = s.split(":");
+		hour = parseInt(arr[0]);
+		minute = parseInt(arr[1]);
+		return Math.floor((60*hour + minute)/5);
+	}
+
+</script>
+</body>
+</html>
