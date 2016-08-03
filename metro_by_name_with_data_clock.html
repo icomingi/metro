@@ -7,7 +7,7 @@
 			font-family: sans-serif;
 			font-size: 1.5em;
 			font-weight: 300;
-			color: "grey";
+			color: gray;
 		}
 	</style>
 </head>
@@ -18,9 +18,6 @@
 <script>
 	var line_color = {"1": "#e91b39", "2": "#8ac53f", "3": "#fad107", "4": "#502e8d", "5": "#9056a3", "6": "#d61870", "7": "#f37121", "8": "#009eda", "9": "#79c8ed", "10": "#bca8d1", "11": "#7e2131", "12": "#007c65", "13": "#e895c0", "16": "#8dd1bf"
 	};
-	//var data = [{'name': '黄陂南路', 'transfer': '普通站', 'y': 569, 'x': 541, 'line': '1', 'id': '0122'},
-	//{'name': '大华三路', 'transfer': '换乘站', 'y': 546, 'x': 544, 'line': '1', 'id': '0123'},
-	//{'name': '新闸路', 'transfer': '普通站', 'y': 521, 'x': 483, 'line': '1', 'id': '0124'}];
 
 	var connections;
 
@@ -38,6 +35,8 @@
 	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 40}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}],
 	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 10}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 120}]
 	// ];
+
+	// var entries = ;
 
 	var entries;
 
@@ -65,7 +64,7 @@
 
 	var intervalId;
 
-	var minutes = 53;
+	var minutes = 72;
 
 	function format_minutes(min){
 		var hour = Math.floor(min * 5 / 60);
@@ -93,13 +92,16 @@
 			// 	entries = rows;
 			// 	// update(entries.shift());
 			// });
-			d3.json("every5minute_entry0401.json", function(error, json){
+
+			d3.json("every5minute_entry0401_list.json", function(error, json){
 				if (error) return console.warn(error);
 				entries = json;
 				// initialize_entries();
-				update();
+				// update();
 				intervalId = setInterval(update, 1000);
 			});
+
+
 		});
 	});
 
@@ -200,38 +202,92 @@
 			.style("fill", function(d) { return line_color[stations[d]["LINE_NO"]]; });
 	}
 
+	// function draw(oneTick){
+	// 	var circles = chart.selectAll("circle.entry");
+	// 	var circlesUpdate = circles.data(oneTick, function(d){ return d["name"]; });
+
+	// 	circlesUpdate.transition()
+	// 		.duration(1000)
+	// 		.attr("r", function(d){ return r(d["entry"]); })
+	// 		.attr("cx", function(d) { return x(stations[d["name"]]["LNG"]); })
+	// 		.attr("cy", function(d) { 
+	// 			// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
+	// 			// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
+	// 			// console.log(y(stations[d["name"]]["LAT"]));
+	// 			return y(stations[d["name"]]["LAT"]); })
+	// 		.style("fill", function(d) { 
+	// 			return line_color[stations[d["name"]]["LINE_NO"]]; } )
+	// 		.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); });
+
+	// 	circlesUpdate.enter().append("circle")
+	// 		.attr("class", "entry")
+	// 		.attr("id", function(d) { return d["name"]; })
+	// 		.attr("cy", function(d) {
+	// 			if (stations[d["name"]]["LAT"] == undefined) { console.log(d["name"]); }
+	// 			return y(parseFloat(stations[d["name"]]["LAT"])); 
+	// 		})
+	// 		.attr("cx", function(d) { return x(parseFloat(stations[d["name"]]["LNG"])); })
+	// 		.attr("r", 0)
+	// 		.style("fill", function(d) { 
+	// 			return line_color[stations[d["name"]]["LINE_NO"]]; } )
+	// 		.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); })
+	// 		.transition()
+	// 		.duration(1000)
+	// 		.attr("r", function(d) { return r(d["entry"]); });
+
+	// 	circlesUpdate.exit().remove();
+	// 		// .transition()
+	// 		// .duration(1000)
+	// 		// .attr("r", 0)
+	// 		// .style("fill-opacity", 0);
+
+	// 	d3.select("#clock")
+	// 		.transition()
+	// 		.duration(1000)
+	// 		// .text(format_minutes(minutes+1));
+	// 		.tween("text", tweenText(minutes));
+	// }
+
+	function st_name(d){
+		return d[0];
+	}
+
+	function st_entry(d){
+		return d[1];
+	}
+
 	function draw(oneTick){
 		var circles = chart.selectAll("circle.entry");
-		var circlesUpdate = circles.data(oneTick, function(d){ return d["name"]; });
+		var circlesUpdate = circles.data(oneTick, st_name);
 
 		circlesUpdate.transition()
 			.duration(1000)
-			.attr("r", function(d){ return r(d["entry"]); })
-			.attr("cx", function(d) { return x(stations[d["name"]]["LNG"]); })
+			.attr("r", function(d){ return r(st_entry(d)); })
+			.attr("cx", function(d) { return x(stations[st_name(d)]["LNG"]); })
 			.attr("cy", function(d) { 
 				// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
 				// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
 				// console.log(y(stations[d["name"]]["LAT"]));
-				return y(stations[d["name"]]["LAT"]); })
+				return y(stations[st_name(d)]["LAT"]); })
 			.style("fill", function(d) { 
-				return line_color[stations[d["name"]]["LINE_NO"]]; } )
-			.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); });
+				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
 
 		circlesUpdate.enter().append("circle")
 			.attr("class", "entry")
-			.attr("id", function(d) { return d["name"]; })
+			.attr("id", st_name)
 			.attr("cy", function(d) {
-				if (stations[d["name"]]["LAT"] == undefined) { console.log(d["name"]); }
-				return y(parseFloat(stations[d["name"]]["LAT"])); 
+				if (stations[st_name(d)]["LAT"] == undefined) { console.log(d["name"]); }
+				return y(parseFloat(stations[st_name(d)]["LAT"])); 
 			})
-			.attr("cx", function(d) { return x(parseFloat(stations[d["name"]]["LNG"])); })
+			.attr("cx", function(d) { return x(parseFloat(stations[st_name(d)]["LNG"])); })
 			.attr("r", 0)
 			.style("fill", function(d) { 
-				return line_color[stations[d["name"]]["LINE_NO"]]; } )
-			.style("fill-opacity", function(d) { return opacity_scaler(d["entry"]); })
+				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); })
 			.transition()
 			.duration(1000)
-			.attr("r", function(d) { return r(d["entry"]); });
+			.attr("r", function(d) { return r(st_entry(d)); });
 
 		circlesUpdate.exit().remove();
 			// .transition()
@@ -242,18 +298,21 @@
 		d3.select("#clock")
 			.transition()
 			.duration(1000)
-			// .text(format_minutes(minutes+1));
-			.tween("text", tweenText(minutes));
+			.text(format_minutes(minutes));
+			// .tween("text", tweenText(minutes));
 	}
 
 	function update(){
-		var oneTick = entries.shift();
-		// console.log(oneTick);
-		if (oneTick) {
+		// var oneTick = entries.shift();
+		var oneTick = entries.slice(minutes, minutes+1)[0];
+		console.log(oneTick);
+		if (minutes < 23*60/5) {
 			minutes++;
 			draw(oneTick);
 		}
 		else {
+			draw([]);
+			minutes = 96;
 			stopAnimation();
 		}
 	}
