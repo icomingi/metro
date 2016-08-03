@@ -15,7 +15,7 @@ As a daily metro commuter, I am really interested in knowing how many people are
 ###Give me an example of the visualization.
 
 Check this out. If you clone this project, you can also see some animations.
-![Shanghai Metro Visualization]()
+![Shanghai Metro Visualization](/metro/Shanghai_Metro_Visualization_example.png)
 
 ###How to see the visualiation?
 
@@ -23,7 +23,7 @@ Follow the following steps, you will see the visualization on your computer as w
 
 1. Clone this repo
 2. CD into the directory of the repo
-3. Run a local server on this directory. In my case, I run a local server by typing in "python -m SimpleHTTPServer  8888&"
+3. Run a local server on this directory. In my case, I run a local server by typing in "python -m SimpleHTTPServer  8888"
 4. Open your browser and go to localhost:8888
 5. Click some HTML file links
 
