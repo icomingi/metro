@@ -15,7 +15,8 @@ As a daily metro commuter, I am really interested in knowing how many people are
 ###Give me an example of the visualization.
 
 Check this out. If you clone this project, you can also see some animations.
-![Shanghai Metro Visualization](/metro/Shanghai_Metro_Visualization_example.png)
+
+![Shanghai Metro Visualization](/Shanghai_Metro_Visualization_example.png)
 
 ###How to see the visualiation?
 
