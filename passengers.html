@@ -39,9 +39,8 @@
 </head>
 <body>
 <div><h2 class="text-center">列车载客量动态图(以地铁5号线为例)</h2>
-	<p>请点击下方开始按钮启动动态演示</p>
-	<input type="checkbox" checked data-toggle="toggle" id="play_passenger" data-on="<span class='glyphicon glyphicon-play' aria-hidden='true'></span> 开始" data-off="<span class='glyphicon glyphicon-pause' aria-hidden='true'></span> 暂停"></div>
-
+</div>
+<p class="text-center">请点击"开始"启动动态演示   <input type="checkbox" checked data-toggle="toggle" id="play_passenger" data-on="<span class='glyphicon glyphicon-play' aria-hidden='true'></span> 开始" data-off="<span class='glyphicon glyphicon-pause' aria-hidden='true'></span> 暂停"></p>
 <div>
 	<svg id="passengers"></svg>
 </div>
@@ -54,14 +53,16 @@
 
 	var START_MINUTES = 300;
 
-	var start_minutes = 390;
+	var start_minutes = 410;
+
+	var ANIMATION_INTERVAL = 1000;
 
 	d3.json("trains.json", function(error, json){
 		if (error) return console.warn(error);
 		data = json;
 		console.log("load success!");
 		// update();
-  //   	var intervalId = setInterval(update, 1000);
+  //   	var intervalId = setInterval(update, ANIMATION_INTERVAL);
   		// startAnimation();
   		// $("#play_passenger").on("click", function(e){
   		// 	if ($("#play_passenger").checked == true){
@@ -75,7 +76,7 @@
 	});
 
 	function startAnimation(){
-		intervalId = setInterval(update, 1000);
+		intervalId = setInterval(update, ANIMATION_INTERVAL);
 	}
 
 	$("#play_passenger").change(function(){
@@ -96,8 +97,8 @@
 		}
 	});
 
-	var margin = {top: 20, right: 30, bottom: 30, left: 40},
-	    width = 960 - margin.left - margin.right,
+	var margin = {top: 20, right: 30, bottom: 30, left: 50},
+	    width = 1000 - margin.left - margin.right,
 	    height = 400 - margin.top - margin.bottom;
 
 	var x = d3.scale.ordinal().domain(stations)
@@ -110,6 +111,14 @@
 	pi = Math.PI;
 	scaleMins = d3.scale.linear().domain([0, 59 + 59/60]).range([0, 2 * pi]);
 	scaleHours = d3.scale.linear().domain([0, 11 + 59/60]).range([0, 2 * pi]);
+
+	function format_minutes(min){
+		var hour = Math.floor(min / 60);
+		var minute = Math.round(min % 60);
+		if (hour<10) hour = '0' + hour;
+		if (minute<10) minute = '0' + minute;
+		return hour + ":" + minute;
+	}
 
 	var xAxis = d3.svg.axis()
 	    .scale(x)
@@ -199,7 +208,7 @@
     clockGroup = chart.append("g")
 						.attr("width", 200)
 						.attr("height", 200)
-						.attr("transform", "translate(" + width/2 + ", 30)");
+						.attr("transform", "translate(" + width/2 + ", 25)");
 
 	clockGroup.append("svg:circle")
   			.attr("r", 40).attr("fill", "none")
@@ -228,6 +237,13 @@
 
 	renderClock(minutes_2_object(start_minutes));
 
+	clockGroup.append("g")
+  			.attr("transform", "translate(0, " + 60 + ")")
+  			.append("text")
+  			.attr("class", "clock-reading")
+  			.attr("text-anchor", "middle")
+			.text(format_minutes(start_minutes));
+
 	function customized_x(d) {
 		return (1-d[2][1])*x(d[2][0][0]) + d[2][1]*x(d[2][0][1]);
 	}
@@ -238,7 +254,7 @@
       	var barUpdate = bars.data(oneTick, function(d) { return d[1]; });
 
       	barUpdate.transition()
-      		.duration(1000)
+      		.duration(ANIMATION_INTERVAL)
       		.attr("x", customized_x)
       		.attr("y", function(d) { 
       			// console.log(d);
@@ -253,12 +269,12 @@
 	      	.attr("width", x.rangeBand())
 	      	.attr("height", 0)
 	      	.transition()
-	      	.duration(1000)
+	      	.duration(ANIMATION_INTERVAL)
 	      	.attr("y", function(d) { return y(d[3]); })
 	      	.attr("height", function(d) { return height - y(d[3]); });
 
       	barUpdate.exit().transition()
-      		.duration(1000)
+      		.duration(ANIMATION_INTERVAL)
       		.attr("height", 0);
 
       	barUpdate.exit().remove();
@@ -330,7 +346,7 @@
     		.attr("fill", "none");
 
     	clockUpdate.transition()
-    		.duration(1000)
+    		.duration(ANIMATION_INTERVAL)
     		.attr("d", function(d) {
 	      		if (d.unit === "seconds") {
 	        		// return secondArc(d);
@@ -341,12 +357,12 @@
 		        }
     		});
 
-		// clockGroup.select("text.clock-reading")
-		// 	.transition()
-		// 	.duration(1000)
-		// 	.text(format_minutes(minutes));
+		clockGroup.select("text.clock-reading")
+			.transition()
+			.duration(ANIMATION_INTERVAL)
+			.text(format_minutes(start_minutes));
 
-		}
+	}
 
     function update(){
     	// console.log("update called");

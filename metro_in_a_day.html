@@ -2,24 +2,29 @@
 <head>
 	<title>Shanghai Metro</title>
 	<script type="text/javascript" src="d3.min.js"></script>
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap-toggle.min.js"></script>
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" href="css/bootstrap-toggle.min.css">
 	<style type="text/css">
 		#clock {
 			font-family: sans-serif;
-			font-size: 1.5em;
+			font-size: 1.2em;
 			font-weight: 300;
 			color: gray;
 		}
 
-		body {
-		  /*background-color: #393939;*/
+/*		body {
+		  background-color: #393939;
 		  font-size: 12px;
 		  font-family: 'Raleway', sans-serif;
-		}
+		}*/
 
-		p {
+/*		p {
 		  color: white;
 		  margin: 50px;
-		}
+		}*/
 
 		a {
 		  color: #4FDEF2;
@@ -34,7 +39,7 @@
 
 		.slider_axis .halo {
 		  stroke: gray;
-		  stroke-width: 4px;
+		  stroke-width: 2px;
 		  stroke-linecap: round;
 		}
 
@@ -48,7 +53,7 @@
 		.slider .handle text {
 		  fill: black;
 		  text-align: center;
-		  font-size: 18px;
+		  font-size: 1.5em;
 		}
 
 		.legend circle {
@@ -64,50 +69,44 @@
 
 		.entry-value {
 			fill: white;
+			font: 11px sans-serif;
 		}
 
 		.lengend-header {
-			font: 1.5em sans-serif;
+			font: 1.3em sans-serif;
 		}
 
+		.data-source {
+			color: #C0C0C0;
+			font: 12px sans-serif;
+		}
 	</style>
 </head>
 <body>
 <div>
-	<svg id="metro"></svg>
+<h2 class="text-center">上海地铁系统进站流量图</h2>
+<p class="text-center">请点击"开始"启动动态演示   <input type="checkbox" checked data-toggle="toggle" id="play_flow" data-on="<span class='glyphicon glyphicon-play' aria-hidden='true'></span> 开始" data-off="<span class='glyphicon glyphicon-pause' aria-hidden='true'></span> 暂停"></p>
+</div>
+<div>
+	<svg id="metro_by_entry"></svg>
 </div>
 <script>
-	var line_color = {"1": "#e91b39", "2": "#8ac53f", "3": "#fad107", "4": "#502e8d", "5": "#9056a3", "6": "#d61870", "7": "#f37121", "8": "#009eda", "9": "#79c8ed", "10": "#bca8d1", "11": "#7e2131", "12": "#007c65", "13": "#e895c0", "16": "#8dd1bf"
+	var LINE_COLOR = {"1": "#e91b39", "2": "#8ac53f", "3": "#fad107", "4": "#502e8d", "5": "#9056a3", "6": "#d61870", "7": "#f37121", "8": "#009eda", "9": "#79c8ed", "10": "#bca8d1", "11": "#7e2131", "12": "#007c65", "13": "#e895c0", "16": "#8dd1bf"
 	};
 
 	var connections;
 
 	var stations;
 
-	// var entries = [
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 50}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 80}], 
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 100}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}], 
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 150}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 180}], 
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 120}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 150}], 
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 90}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 80}], 
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 70}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}],
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 70}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 10}],
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 80}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 30}],
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 40}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 100}],
-	// 		[{"name": "大华三路", "x": 100, "y": 100, "entry": 10}, {"name": "陆家嘴", "x": 400, "y": 400, "entry": 120}]
-	// ];
-
-	// var entries = ;
-
 	var entries;
 
-	var margin = {top: 20, right: 30, left: 50, bottom: 30};
-	var width = 1200 - margin.left - margin.right;
-	var height = 800 - margin.top - margin.bottom;
+	var margin = {top: 0, right: 30, left: 20, bottom: 30};
+	var width = 1000 - margin.left - margin.right;
+	var height = 750 - margin.top - margin.bottom;
 
 	var barHeight = 20;
 
-	var chart = d3.select("#metro")
+	var chart = d3.select("#metro_by_entry")
 				.attr("width", width + margin.left + margin.right)
 				.attr("height", height + margin.top + margin.bottom)
 				.append("g")
@@ -117,28 +116,39 @@
 
 	var clockGroup;
 
+	// create scaler functions for drawing the circles
 	var x = d3.scale.linear().domain([121.16, 121.81]).range([0, width]);
 	var y = d3.scale.linear().domain([30.99, 31.42]).range([height, 0]);
 	var r = d3.scale.sqrt().domain([0, 500]).range([0, 30]);
 	var opacity_scaler = d3.scale.linear().domain([0, 500]).range([0.3, 0.8]);
 
+	// create scaler functions for drawing the ranking bars
 	var rankingY = d3.scale.ordinal().rangeRoundBands([0, 200], .1);
 	var rankingX = d3.scale.linear().range([0, 200]);
 
-	var xAxis = d3.svg.axis()
-				.scale(x)
-				.orient("bottom");
-	var yAxis = d3.svg.axis()
-				.scale(y)
-				.orient("left");
+	// var xAxis = d3.svg.axis()
+	// 			.scale(x)
+	// 			.orient("bottom");
+	// var yAxis = d3.svg.axis()
+	// 			.scale(y)
+	// 			.orient("left");
 
+	// create scaler functions for drawing the analog clock
 	pi = Math.PI;
 	scaleMins = d3.scale.linear().domain([0, 59 + 59/60]).range([0, 2 * pi]);
 	scaleHours = d3.scale.linear().domain([0, 11 + 59/60]).range([0, 2 * pi]);
 
 	var intervalId;
 
+	// animate every 1000 ms
+	var ANIMATION_INTERVAL = 700;
+
+	// initialize the tempo to start from 6:00am
 	var minutes = 72;
+
+	var END_MINUTES = 23*60;
+
+	var INTERACTION_START_MINUTES = 96;
 
 	function format_minutes(min){
 		var hour = Math.floor(min * 5 / 60);
@@ -151,50 +161,45 @@
 	function minutes_2_object(min){
 		var hour = min * 5 / 60;
 		var minute = Math.round(min * 5 % 60);
-		return data = [
-			{ "unit": "minutes", "numeric": minute },
+		return [{ "unit": "minutes", "numeric": minute },
 			{ "unit": "hours", "numeric": hour }
 		];
 	}
 
+	// start loading data files
 	d3.json("connections_by_station_name.json", function(error, json){
 		if (error) return console.warn(error);
 		connections = json;
+
 		d3.json("stations_by_name_with_alias.json", function(error, json){
 			if (error) return console.warn(error);
 			stations = json;
-			visualize();
-			// d3.csv("Every5MinuteEnterForEachStation0401.csv", function (d) {
-			// 	return {
-			// 		"name": d["name"],
-			// 		"entry": +d["entry"],
-			// 		"minutegroup": d["minutegroup"]
-			// 	};
-			// }, function(error, rows) {
-			// 	if (error) return console.warn(error);
-			// 	entries = rows;
-			// 	// update(entries.shift());
-			// });
+			visualize_base_graph();
 
 			d3.json("every5minute_entry0401_list.json", function(error, json){
 				if (error) return console.warn(error);
 				entries = json;
-				// initialize_entries();
-				// update();
-				// intervalId = setInterval(update, 1000);
-				startAnimation();
+				// startAnimation();
 				// enableInteraction();
+				$("#play_flow").bootstrapToggle("enable");
 			});
-
-
 		});
 	});
 
+	$("#play_flow").change(function(){
+		if ($(this).prop("checked") == true){
+			stopAnimation();
+		}
+		else{
+			startAnimation();
+		}
+	});
+
 	function startAnimation(){
-		intervalId = setInterval(update, 1000);
+		intervalId = setInterval(update, ANIMATION_INTERVAL);
 	}
 
-	function visualize() {
+	function visualize_base_graph() {
 
 		chart.selectAll("line.route")
 			.data(connections)
@@ -203,7 +208,7 @@
 			.attr("class", "route")
 			.attr("stroke-width", 3)
 			.attr("id", function(d) { return d[0] + "-" + d[1]; })
-			.attr("stroke", function(d){ return line_color[d[2]]; })
+			.attr("stroke", function(d){ return LINE_COLOR[d[2]]; })
 			.attr("stroke-linecap", "round")
 			.attr("x1", function(d) { return x(parseFloat(stations[d[0]]['LNG'])); })
 			.attr("y1", function(d) { return y(parseFloat(stations[d[0]]['LAT'])); })
@@ -223,12 +228,12 @@
 			.style("stroke", "grey")
 			.style("fill", "#ffffff");
 
-		var line_no = Object.keys(line_color).sort(function(a, b) {
+		var line_no = Object.keys(LINE_COLOR).sort(function(a, b) {
 			return parseInt(a) - parseInt(b);
 		});
 
 		var legendEnter = chart.append("g")
-			.attr("transform", "translate(70, " + (height - 380) + ")")
+			.attr("transform", "translate(40, " + (height - 450) + ")")
 			.selectAll("g")
 			.data(line_no)
 			.enter()
@@ -240,23 +245,24 @@
 		
 		legendEnter.append("circle")
 			.attr("r", 10)
-			// .attr("cy", )
-			.style("fill", function (d) { return line_color[d]; });
+			.style("fill", function (d) { return LINE_COLOR[d]; });
 
 		legendEnter.append("text")
 			.attr("text-anchor", "middle")
-			// .attr("y", 5)
 			.attr("dy", "0.35em")
 			.text(function (d) { return d;} )
 			.style("fill", "white");
-			// .attr("dx", function (d) { return -20;} );
 
 		var circleLegend = chart.append("g")
     		.attr("class", "legend")
-    		.attr("transform", "translate(" + (width - 220) + "," + (height - 5) + ")")
+    		.attr("transform", "translate(" + (width - 150) + "," + (height - 220) + ")")
   			.selectAll("g")
     		.data([100, 400, 1000])
   			.enter().append("g");
+
+  		circleLegend.append("text")
+  			.attr("y", 10)
+  			.text("人次/5分钟")
 
 		circleLegend.append("circle")
     		.attr("cy", function(d) { return -r(d); })
@@ -267,10 +273,17 @@
     		.attr("dy", "1.3em")
     		.text(function(d) {return d; });
 
+    	chart.append("g")
+  			.attr("transform", "translate(" + (width - 250) + ", " + height + ")")
+  			.append("text")
+  			.attr("class", "data-source")
+  			.text("数据源: 上海地铁2015年4月1日一卡通刷卡数据");
+
+
     	barArea = chart.append("g")
 						.attr("width", 200)
 						.attr("height", 200)
-						.attr("transform", "translate(" + (width-200) + ", " + 50 + ")");
+						.attr("transform", "translate(" + (width-200) + ", " + 40 + ")");
 
 		barArea.append("text")
 				.attr("class", "lengend-header")
@@ -283,11 +296,7 @@
 		clockGroup = chart.append("g")
 						.attr("width", 200)
 						.attr("height", 200)
-						.attr("transform", "translate(" + (width-450) + ", 50)");
-
-		// clock.append("text")
-		// 	 .attr("id", "clock")
-		// 	 .text(format_minutes(minutes));
+						.attr("transform", "translate(" + width/5 + ", 50)");
 
 		clockGroup.append("svg:circle")
   			.attr("r", 40).attr("fill", "none")
@@ -314,38 +323,24 @@
 			.attr("stroke", "black")
 			.attr("stroke-width", 1);
 
-  		renderClock(minutes_2_object(72));
+  		renderClock(minutes_2_object(minutes));
 
-		// chart.append('g')
-		// 	.attr("class", "x axis")
-		// 	.attr("transform", "translate(0, " + height + ")")
-		// 	.call(xAxis);
-	
-		// chart.append('g')
-		// 	.attr("class", "y axis")
-		// 	.call(yAxis);
+  		clockGroup.append("g")
+  			.attr("transform", "translate(0, " + 60 + ")")
+  			.append("text")
+  			.attr("class", "clock-reading")
+  			.attr("text-anchor", "middle")
+			.text(format_minutes(minutes));
+
 	}
 
-	function initialize_entries(){
-		chart.selectAll("circle.entry")
-			.data(Object.keys(stations))
-			.enter()
-			.append("svg:circle")
-			.attr("class", "entry")
-			// .attr("id", function(d){ return d; })
-			.attr("cx", function(d){ return x(stations[d]['LNG']);})
-			.attr("cy", function(d){ return y(stations[d]['LAT']);})
-			.attr("r", 0)
-			// .style("stroke", "grey")
-			.style("fill", function(d) { return line_color[stations[d]["LINE_NO"]]; });
-	}
 
+	// create convenient accessor functions
 	function st_name(d){
 		return d[0];
 	}
 
 	function st_entry(d){
-		// console.log(d);
 		return d[1];
 	}
 
@@ -354,16 +349,13 @@
 		var circlesUpdate = circles.data(oneTick, st_name);
 
 		circlesUpdate.transition()
-			.duration(1000)
+			.duration(ANIMATION_INTERVAL)
 			.attr("r", function(d){ return r(st_entry(d)); })
 			.attr("cx", function(d) { return x(stations[st_name(d)]["LNG"]); })
 			.attr("cy", function(d) { 
-				// if (y(stations[d["name"]]["LAT"]) < 10) { console.log(d); }
-				// if(d["name"] == "曹杨路") { console.log(stations[d["name"]]["LAT"]); }
-				// console.log(y(stations[d["name"]]["LAT"]));
 				return y(stations[st_name(d)]["LAT"]); })
 			.style("fill", function(d) { 
-				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+				return LINE_COLOR[stations[st_name(d)]["LINE_NO"]]; } )
 			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
 
 		circlesUpdate.enter().append("circle")
@@ -376,15 +368,15 @@
 			.attr("cx", function(d) { return x(parseFloat(stations[st_name(d)]["LNG"])); })
 			.attr("r", 0)
 			.style("fill", function(d) { 
-				return line_color[stations[st_name(d)]["LINE_NO"]]; } )
+				return LINE_COLOR[stations[st_name(d)]["LINE_NO"]]; } )
 			.style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); })
 			.transition()
-			.duration(1000)
+			.duration(ANIMATION_INTERVAL)
 			.attr("r", function(d) { return r(st_entry(d)); });
 
 		circlesUpdate.exit().remove();
 			// .transition()
-			// .duration(1000)
+			// .duration(ANIMATION_INTERVAL)
 			// .attr("r", 0)
 			// .style("fill-opacity", 0);
 
@@ -411,7 +403,7 @@
 			.attr("width", function(d) { return rankingX(st_entry(d)); })
 			.attr("height", rankingY.rangeBand())
 			.style("fill", function(d) { 
-				return line_color[stations[st_name(d)]["LINE_NO"]]; 
+				return LINE_COLOR[stations[st_name(d)]["LINE_NO"]]; 
 			});
 			// .style("fill-opacity", function(d) { return opacity_scaler(st_entry(d)); });
 
@@ -456,10 +448,7 @@
       		.attr("x", function(d) { return rankingX(st_entry(d)) - 3; })
       		.text(st_entry);
 
-		d3.select("#clock")
-			.transition()
-			.duration(1000)
-			.text(format_minutes(minutes));
+		
 			// .tween("text", tweenText(minutes));
 	}
 
@@ -516,7 +505,7 @@
     		.attr("fill", "none");
 
     	clockUpdate.transition()
-    		.duration(1000)
+    		.duration(ANIMATION_INTERVAL)
     		.attr("d", function(d) {
 	      		if (d.unit === "seconds") {
 	        		// return secondArc(d);
@@ -527,20 +516,33 @@
 		        }
     		});
 
+   //  	d3.select("#clock")
+			// .transition()
+			// .duration(1000)
+			// .text(format_minutes(minutes-1));
+
+		// clockGroup.select("text.clock-reading")
+		// 	.transition()
+		// 	.duration(ANIMATION_INTERVAL)
+		// 	.text(format_minutes(minutes));
+
 		}
 
 	function update(){
 		// var oneTick = entries.shift();
 		var oneTick = entries.slice(minutes, minutes+1)[0];
 		// console.log(oneTick);
-		if (minutes < 23*60/5) {
-			renderClock(minutes_2_object(minutes))
-			minutes++;
+		if (minutes < END_MINUTES/5) {
+			renderClock(minutes_2_object(minutes));
+			clockGroup.select("text.clock-reading").transition()
+				.duration(ANIMATION_INTERVAL)
+				.text(format_minutes(minutes-1));
 			draw(oneTick);
+			minutes++;
 		}
 		else {
-			minutes = 96;
-			renderClock(minutes_2_object(minutes))
+			minutes = INTERACTION_START_MINUTES;
+			renderClock(minutes_2_object(minutes));
 			draw(entries.slice(minutes, minutes+1)[0]);
 			stopAnimation();
 			enableInteraction();
@@ -549,6 +551,8 @@
 
 	function stopAnimation(){
 		clearInterval(intervalId);
+		// d3.select("#clock")
+		// 	.attr("display", "none");
 	}
 
 	function enableInteraction(){
@@ -578,7 +582,7 @@
 		var slider_container = chart.append("g")
 			.attr("width", width)
 			.attr("height", height)
-			.attr("transform", "translate(250, " + 650 + ")");
+			.attr("transform", "translate(200, " + 550 + ")");
 
 		slider_container.append("g")
 			.attr("class", "slider_axis")
@@ -637,6 +641,9 @@
   			handle.select('text').text(format_minutes(value));
   			draw(entries.slice(value, value+1)[0]);
   			renderClock(minutes_2_object(value));
+  			// console.log(clockGroup.select("text.clock-reading").text());
+  			clockGroup.select("text.clock-reading").text(format_minutes(value));
+  			// console.log(clockGroup.select("text.clock-reading").text());
 		}
 
 	}
